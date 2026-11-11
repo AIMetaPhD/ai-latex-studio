@@ -1,0 +1,60 @@
+\documentclass[conference]{IEEEtran}
+\usepackage{cite}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{xcolor}
+
+\title{Reliability-Aware Distributed LLM Inference with KV Cache Migration}
+\author{\IEEEauthorblockN{Synthetic Test Author}\IEEEauthorblockA{Department of Computing\\The Hong Kong Polytechnic University\\Email: fixture@example.invalid}}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This document is a synthetic compilation fixture used to verify the LaTeX toolchain.
+It contains a citation, a cross-reference, a numbered equation, and a figure.
+\end{abstract}
+
+\section{Introduction}
+\IEEEPARstart{E}{dge} inference with KV cache migration~\cite{zhang2024kv} can reduce tail latency
+for multi-tenant serving. We study the trade-off between migration cost and reliability.
+
+\begin{equation}
+L = \sum_{i=1}^{n} \lambda_i \tau_i + \mu \sigma^{2} \label{eq:latency}
+\end{equation}
+
+As shown in Equation~\eqref{eq:latency} and Figure~\ref{fig:arch}, the architecture is
+organised into three tiers. The KV cache is replicated across tiers to survive node failure.
+
+\section{Method}
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.6\linewidth]{figure.png}
+  \caption{Synthetic system architecture fixture.}
+  \label{fig:arch}
+\end{figure}
+
+We formulate the migration decision as a constrained optimisation problem and solve it
+with a greedy heuristic. Table~\ref{tab:params} lists the parameters.
+
+\begin{table}[t]
+  \centering
+  \caption{Synthetic parameters.}
+  \label{tab:params}
+  \begin{tabular}{ll}
+    \hline
+    Symbol & Meaning \\
+    \hline
+    $\lambda_i$ & request rate of tenant $i$ \\
+    $\tau_i$ & service time of tenant $i$ \\
+    \hline
+  \end{tabular}
+\end{table}
+
+\section{Conclusion}
+The fixture compiles with \texttt{pdflatex} and BibTeX.
+
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+
+\end{document}

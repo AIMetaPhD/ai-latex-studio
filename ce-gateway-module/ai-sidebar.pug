@@ -1,0 +1,86 @@
+// AI LaTeX Studio — editor-page sidebar include.
+// Injected by CE's official viewIncludes mechanism at editor/_meta.pug's
+// moduleIncludes("editor:meta", locals) hook. `scriptNonce` comes from the CE
+// layout locals, so the script satisfies the existing nonce-based CSP — the
+// policy is NOT relaxed (verified: script loads with nonce, no unsafe-* needed).
+//
+// Mount point footprint: 1 partial + 1 script + 1 settings key. No core file
+// edits, no webpack rebuild, no response rewriting.
+
+.ails-ai-sidebar-root
+  button#ails-ai-toggle.ails-ai-toggle(type="button" aria-label="Toggle AI assistant" aria-expanded="false" title="AI assistant")
+    span.ails-ai-toggle-dot
+    span.ails-ai-toggle-label AI
+  aside#ails-ai-panel.ails-ai-panel(hidden aria-label="AI assistant panel")
+    header.ails-ai-header
+      strong AI Assistant
+      span#ails-ai-status.ails-ai-status connecting…
+      button#ails-ai-close.ails-ai-close(type="button" aria-label="Close AI assistant") ×
+    section.ails-ai-context
+      label.ails-ai-check
+        input#ails-ai-ctx-selection(type="checkbox" disabled)
+        | Selection
+        small (G4)
+      label.ails-ai-check
+        input#ails-ai-ctx-document(type="checkbox" disabled)
+        | Active file
+        small (G4)
+      label.ails-ai-check
+        input#ails-ai-ctx-logs(type="checkbox" disabled)
+        | Compile log
+        small (G4)
+    section.ails-ai-models
+      label.ails-ai-label(for="ails-ai-provider") Provider
+      select#ails-ai-provider
+        option(value="local") Local (Ollama)
+        option(value="openai") OpenAI (BYOK)
+        option(value="compat") Compatible endpoint
+      label.ails-ai-label(for="ails-ai-model") Model
+      select#ails-ai-model
+        option(value="") (loading…)
+    section#ails-ai-transcript.ails-ai-transcript(aria-live="polite")
+      p.ails-ai-hint G2 wiring only: sends text to the local sidecar; no paper content is attached yet (G4 adds reviewable proposals).
+    footer.ails-ai-composer
+      textarea#ails-ai-input.ails-ai-input(rows="3" placeholder="Ask about your paper…")
+      .ails-ai-actions
+        button#ails-ai-fixlog.ails-ai-stop(type="button" title="Read the real compile log and propose a fix (does not modify the file)") Fix compile error
+        button#ails-ai-suggest.ails-ai-stop(type="button" title="Ask for a reviewable edit proposal (does not modify the file)") Suggest edit
+        button#ails-ai-send.ails-ai-send(type="button") Send
+        button#ails-ai-stop.ails-ai-stop(type="button" disabled) Stop
+  style.
+    .ails-ai-sidebar-root{position:fixed;right:16px;bottom:16px;z-index:2000;font:13px/1.4 system-ui,sans-serif}
+    .ails-ai-toggle{display:flex;align-items:center;gap:6px;border:1px solid #c9d2dc;background:#fff;color:#243b53;border-radius:999px;padding:6px 14px;cursor:pointer;box-shadow:0 2px 8px rgba(16,42,67,.18)}
+    .ails-ai-toggle-dot{width:8px;height:8px;border-radius:50%;background:#9aa5b1}
+    .ails-ai-toggle-dot.ok{background:#27ab83}
+    .ails-ai-toggle-dot.err{background:#ef4e4e}
+    .ails-ai-panel{position:fixed;right:16px;bottom:64px;width:360px;max-height:70vh;display:flex;flex-direction:column;background:#fff;border:1px solid #c9d2dc;border-radius:10px;box-shadow:0 8px 30px rgba(16,42,67,.22);overflow:hidden}
+    .ails-ai-header{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid #eef2f6;background:#f7f9fb}
+    .ails-ai-status{margin-left:auto;color:#627d98;font-size:11px}
+    .ails-ai-close{border:0;background:transparent;font-size:16px;line-height:1;cursor:pointer;color:#627d98}
+    .ails-ai-lang{border:1px solid #d9e2ec;background:#fff;color:#486581;border-radius:6px;padding:1px 8px;font-size:11px;line-height:1.6;cursor:pointer}
+    .ails-ai-context{display:flex;gap:10px;flex-wrap:wrap;padding:8px 12px;border-bottom:1px solid #eef2f6}
+    .ails-ai-check{display:flex;align-items:center;gap:4px;color:#829ab1;font-size:11px}
+    .ails-ai-check small{color:#bcccdc}
+    .ails-ai-models{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 12px;border-bottom:1px solid #eef2f6}
+    .ails-ai-label{color:#486581;font-size:11px}
+    .ails-ai-models select{flex:1;min-width:120px;padding:4px 6px;border:1px solid #d9e2ec;border-radius:6px;font-size:12px}
+    .ails-ai-transcript{flex:1;overflow:auto;padding:10px 12px;display:flex;flex-direction:column;gap:8px;min-height:120px}
+    .ails-ai-hint{color:#829ab1;font-size:11px;margin:0}
+    .ails-ai-msg{padding:6px 8px;border-radius:8px;white-space:pre-wrap;word-break:break-word;max-width:100%}
+    .ails-ai-msg.user{background:#e6f6ff;align-self:flex-end}
+    .ails-ai-msg.assistant{background:#f0f4f8;align-self:flex-start}
+    .ails-ai-msg.error{background:#ffe3e3;color:#8d2b2b;align-self:stretch}
+    .ails-ai-diff{border:1px solid #d9e2ec;border-radius:8px;align-self:stretch;overflow:hidden;background:#fff}
+    .ails-ai-diff-head{padding:6px 8px;background:#f0f4f8;font-size:11px;color:#486581;display:flex;gap:6px;align-items:center}
+    .ails-ai-diff-body{font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;max-height:220px;overflow:auto}
+    .ails-ai-diff-old{background:#ffe3e3;color:#8d2b2b;padding:6px 8px;white-space:pre-wrap}
+    .ails-ai-diff-new{background:#e3f9e5;color:#0e5814;padding:6px 8px;white-space:pre-wrap}
+    .ails-ai-diff-rationale{padding:6px 8px;color:#486581;font-size:11px;border-top:1px solid #eef2f6}
+    .ails-ai-diff-actions{display:flex;gap:8px;justify-content:flex-end;padding:6px 8px;border-top:1px solid #eef2f6}
+    .ails-ai-composer{border-top:1px solid #eef2f6;padding:8px 12px;display:flex;flex-direction:column;gap:6px}
+    .ails-ai-input{width:100%;resize:vertical;border:1px solid #d9e2ec;border-radius:6px;padding:6px 8px;font:inherit}
+    .ails-ai-actions{display:flex;gap:8px;justify-content:flex-end}
+    .ails-ai-send,.ails-ai-stop{border:1px solid #2c7be5;background:#2c7be5;color:#fff;border-radius:6px;padding:4px 12px;cursor:pointer;font-size:12px}
+    .ails-ai-stop{background:#fff;color:#2c7be5}
+    .ails-ai-send[disabled],.ails-ai-stop[disabled]{opacity:.5;cursor:default}
+  script(nonce=scriptNonce src="/api/ai/static/sidebar.js" defer)

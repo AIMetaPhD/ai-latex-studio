@@ -1,0 +1,47 @@
+# Node
+node_modules/
+*.log
+
+# Local secrets & env — never commit
+.env
+.env.local
+*.pem
+*.key
+private/
+credentials.json
+
+# QA runtime output (raw evidence stays local; manifests and reports are committed)
+qa/*/artifacts/
+qa/**/traces/
+qa/**/profiles/
+qa/**/rea-profile*/
+reports/g5/raw/
+reports/g5/raw/**/pcap/
+# per-run evidence dumps: raw console output can carry host identity and internal
+# endpoints; the curated reports reference them by path, they are not published
+reports/evidence-*/
+
+# CE toolkit working copy (cloned at deploy time, not vendored)
+aistudio-g1/
+overleaf-toolkit/
+config/variables.env.local
+
+# Overleaf data volumes if ever bind-mounted locally
+data/
+
+# Backup archives (contain user projects + DB snapshots — never commit)
+backups/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# build/export output (tarballs for handoff)
+dist/
+
+.git-commit-msg.tmp
+
+# site-specific gate patterns stay on the operator machine (see scripts/scan-secrets.local.example)
+scripts/scan-secrets.local.sh

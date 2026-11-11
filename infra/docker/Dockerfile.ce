@@ -1,0 +1,149 @@
+# AI LaTeX Studio — Overleaf CE + Academic TeX Bundle (G2 reproducible build layer)
+#
+# The base is pinned to the official manifest index digest
+# sha256:ada39211c54a1e748065834ec44d3a49094cc475c28d8b803a251901592a94b2
+# (recorded with its amd64 manifest digest in docs/UPSTREAM_LOCK.md).
+# Online hosts should build with:
+#   --build-arg CE_IMAGE=sharelatex/sharelatex@sha256:ada39211…
+# Offline / restricted-network hosts (like this G1/G2 machine) must first
+# `docker pull` the same digest through a reachable mirror and retag it, and our
+# scripts assert `docker inspect` RepoDigests == the official digest before build.
+# The tag default below exists for that path; it is digest-verified by scripts.
+# Rebuild is NOT claimed byte-reproducible for the TeX tree (note at bottom).
+
+ARG CE_IMAGE=sharelatex/sharelatex:6.3.2
+FROM ${CE_IMAGE}
+
+# --- TeX Live package pin -----------------------------------------------------
+# TeX Live 2026 is the current-year release, so no `historical/2026` archive exists
+# yet (verified 2026-10-29: HTTP 404). Builds therefore resolve from the live CTAN
+# mirror of the SAME TL2026 repository. Package revisions may drift slightly on
+# later rebuild days; the build-time `kpsewhich` gate + vendored IEEEtran below
+# guarantee compile capability regardless. Pin notes: docs/UPSTREAM_LOCK.md §4b.
+#
+# TEX_PKGS is derived from the academic fixture preamble — every package the
+# golden-path template loads and that is NOT in scheme-basic must be listed here,
+# or the build-time compile proof must catch it (see proof 1, which compiles the
+# FULL fixture preamble, not a minimal one).
+ARG TEX_PKGS="cite times courier xcolor collection-fontsrecommended"
+
+# Vendored network-independent fallbacks (LPPL; only the build essentials are kept).
+COPY infra/texlive-addons/ieeetran/IEEEtran/IEEEtran.cls \
+     /usr/local/texlive/texmf-local/tex/latex/IEEEtran/IEEEtran.cls
+COPY infra/texlive-addons/ieeetran/IEEEtran/bibtex/IEEEtran.bst \
+     /usr/local/texlive/texmf-local/bibtex/bst/IEEEtran/IEEEtran.bst
+
+RUN set -eux; \
+    # 1) place vendored IEEEtran first so the tree compiles even without network
+    mktexlsr; \
+    # 2) install the remaining academic deps (live TL2026 repo; see pin notes)
+    tlmgr update --self || true; \
+    tlmgr install ${TEX_PKGS} || \
+      { echo "ERROR: required TeX package installation failed -- refusing incomplete image" >&2; exit 1; }; \
+    mktexlsr; updmap-sys --quiet || true; \
+    # 3) hard build-time verification: every fixture-critical file MUST resolve,
+    #    otherwise the image must fail to build (never ship a silently-broken TeX).
+    kpsewhich IEEEtran.cls >/dev/null; \
+    kpsewhich IEEEtran.bst >/dev/null; \
+    kpsewhich cite.sty    >/dev/null; \
+    kpsewhich ptmr7t.tfm  >/dev/null; \
+    kpsewhich pcrr7t.tfm  >/dev/null; \
+    echo "Academic TeX Bundle OK"
+
+# NOTE (residual risk, honestly scoped for v0.1):
+#  TeX Live's `tlmgr` cannot pin every file hash, so a fresh build on a machine
+#  whose pinned archive has rolled forward may resolve slightly different package
+#  revisions. The build-time `kpsewhich` gate guarantees the *capability* (these
+#  files exist and the fixture compiles), not byte-identical TeX sources. Full
+#  byte-repro requires committing a tarball of /usr/local/texlive (large); deferred
+#  to a documented `--frozen-lockfile` mode. README will state this precisely.
+
+# --- CE configuration: enforce trusted-local defaults -------------------------
+# Loopback bind is set at compose/runtime (OVERLEAF_LISTEN_IP=127.0.0.1). Here we
+# only bake non-secret hardening defaults; secrets stay in env (never baked).
+ENV OVERLEAF_ENABLE_FEEDBACK=false \
+    OVERLEAF_ANALYTICS_ID=""
+
+# Compile-safety: refuse shell-escape and restrict output. Defense-in-depth,
+# NOT a sandbox (see docs/THREAT-MODEL.md, incl. TL2026 `openin_any` being an
+# official no-op — do not pretend it can be one).
+RUN set -eux; \
+    mkdir -p /usr/local/texlive/texmf-local/web2c; \
+    printf '%s\n' \
+      '# AI LaTeX Studio hardening — verified effective at this path (G2 probe)' \
+      'shell_escape = false' \
+      'openout_any = p' \
+      > /usr/local/texlive/texmf-local/web2c/texmf.cnf; \
+    # NOTE: pdflatex's -shell-escape flag takes NO argument; "-shell-escape=0" is
+    # invalid and breaks latexmk entirely (verified the hard way in G2). Disabling
+    # shell_escape in texmf-local/web2c/texmf.cnf is the correct mechanism and was
+    # measured to refuse even allowlisted commands. Keep the official LatexMk
+    # ($go_mode=3) untouched; latexmk's own defaults do not enable shell escape.
+    kpsewhich --var-value shell_escape | grep -qx false; \
+    # build-time proof 1: the FULL academic-fixture preamble compiles under
+    # hardening. Mirrors tests/fixtures/ieee-basic/main.tex packages; any missing
+    # .sty fails the image build (no silently-broken TeX ships).
+    cd /tmp && printf '\\documentclass[conference]{IEEEtran}\n\\usepackage{cite}\n\\usepackage{amsmath,amssymb}\n\\usepackage{graphicx}\n\\usepackage{xcolor}\n\\begin{document}x\n\\end{document}\n' > hbst.tex \
+      && latexmk -pdf -interaction=nonstopmode hbst.tex >/dev/null 2>&1 && test -s hbst.pdf; \
+    kpsewhich xcolor.sty >/dev/null; \
+    # build-time proof 2: even allowlisted \write18 commands are refused.
+    # The `|| true` is required (a disabled \write18 can make pdflatex exit
+    # non-zero), but on its own it made the whole proof VACUOUS: any earlier
+    # failure -- emergency stop, missing format file, a broken texmf.cnf -- was
+    # swallowed, and `test ! -e` then passed because the compile never reached
+    # the \write18 at all. Reproduced 2026-11-03: a stand-in pdflatex that only
+    # prints "! Emergency stop." and returns 1 leaves the guard exiting 0.
+    # The \typeout marker is the positive control: the build now fails unless the
+    # transcript shows the compile actually got to the line under test, so proof
+    # 2 can only pass for the reason it is supposed to.
+    printf '\\documentclass{article}\n\\begin{document}\n\\typeout{AILS-W18-STARTED}\n\\immediate\\write18{touch /tmp/ails-hb.txt}\n\\typeout{AILS-W18-RETURNED}\n\\end{document}\n' > hbw.tex; \
+    pdflatex -interaction=nonstopmode hbw.tex >hb.log 2>&1 || true; \
+    grep -q AILS-W18-STARTED hb.log || { echo "FAIL: build-time proof 2 never reached the \\write18 line -- the compile died before testing anything, so 'no file created' proves nothing"; exit 1; }; \
+    grep -q AILS-W18-RETURNED hb.log || { echo "FAIL: build-time proof 2 died during the \\write18 line -- the refusal result was never observed"; exit 1; }; \
+    test ! -e /tmp/ails-hb.txt; \
+    rm -f hbst.* hb.log hbw.*
+
+# --- AI LaTeX Studio gateway module (ADR-002 same-origin /api/ai/*) -----------
+# Baked at image-build time (NOT a runtime patch). Two facts learned the hard way:
+#  1. CE's settings merge REPLACES array keys wholesale (libraries/settings/
+#     merge.js), and /etc/overleaf/settings.js does not define
+#     moduleImportSequence. Stating the FULL sequence (4 upstream modules + ours)
+#     is mandatory; a partial list silently drops launchpad/history-v1/etc.
+#  2. settings.js exists in the base image (verified: fresh container, 509 lines,
+#     `module.exports = settings` at EOF) — appending after that line is the
+#     supported override hook.
+COPY ce-gateway-module/index.mjs /overleaf/services/web/modules/ai-latex-studio-gateway/index.mjs
+COPY ce-gateway-module/sidebar.js /overleaf/services/web/modules/ai-latex-studio-gateway/sidebar.js
+COPY ce-gateway-module/ai-sidebar.pug /overleaf/services/web/modules/ai-latex-studio-gateway/ai-sidebar.pug
+COPY ce-gateway-module/settings-append.js /tmp/ails-settings-append.js
+# --- compile deadline -----------------------------------------------------
+# Upstream's local runner ignores the timeout it is given; this patch enforces
+# AILS_COMPILE_TIMEOUT_MS and kills the process group. Fail-closed on anchors.
+COPY infra/docker/patch-clsi-timeout.mjs /tmp/ails-patch-clsi.mjs
+RUN set -eux; \
+    node /tmp/ails-patch-clsi.mjs; \
+    node --check /overleaf/services/clsi/app/js/LocalCommandRunner.js; \
+    grep -q AILS_COMPILE_DEADLINE /overleaf/services/clsi/app/js/LocalCommandRunner.js; \
+    grep -q AILS_SECRET_STRIPPED /overleaf/services/clsi/app/js/LocalCommandRunner.js; \
+    rm /tmp/ails-patch-clsi.mjs
+# --- local single-user auto-login (opt-in, loopback only) ---------------------
+# requireGlobalLogin redirects anonymous users to /login before any route runs,
+# including the root "/". Reroute that one redirect to /ails-login when the
+# operator opted in AND the Host is loopback; everything else is unchanged.
+COPY infra/docker/patch-local-autologin.mjs /tmp/ails-patch-autologin.mjs
+RUN set -eux; \
+    node /tmp/ails-patch-autologin.mjs; \
+    node --check /overleaf/services/web/app/src/Features/Authentication/AuthenticationController.mjs; \
+    grep -q AILS_LOCAL_AUTOLOGIN /overleaf/services/web/app/src/Features/Authentication/AuthenticationController.mjs; \
+    rm /tmp/ails-patch-autologin.mjs
+RUN set -eux; \
+    grep -q ai-latex-studio-gateway /etc/overleaf/settings.js || cat /tmp/ails-settings-append.js >> /etc/overleaf/settings.js; \
+    rm /tmp/ails-settings-append.js; \
+    node --check /overleaf/services/web/modules/ai-latex-studio-gateway/index.mjs; \
+    node --check /overleaf/services/web/modules/ai-latex-studio-gateway/sidebar.js; \
+    node --check /etc/overleaf/settings.js; \
+    grep -q "moduleImportSequence" /etc/overleaf/settings.js; \
+    grep -q "editor:meta" /etc/overleaf/settings.js; \
+    test -f /overleaf/services/web/modules/ai-latex-studio-gateway/ai-sidebar.pug; \
+    cd /overleaf/services/web && node --require /overleaf/.pnp.cjs -e "const pug=require('pug');pug.compileFile('/overleaf/services/web/modules/ai-latex-studio-gateway/ai-sidebar.pug',{basedir:'/overleaf/services/web'});console.log('sidebar pug compiles')" ; \
+    echo 'gateway + sidebar baked OK'

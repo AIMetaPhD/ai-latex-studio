@@ -1,0 +1,15 @@
+# Keep the build context small and deterministic.
+# Dockerfile.ce needs: infra/texlive-addons/ieeetran/IEEEtran/{IEEEtran.cls,bibtex/IEEEtran.bst}
+# Sidecar build needs:  services/ai-sidecar/**
+# Everything else is excluded from both images.
+node_modules
+.git
+.env
+qa/
+reports/
+docs/
+tests/
+scripts/
+infra/ce-module-probe/
+package.json
+package-lock.json

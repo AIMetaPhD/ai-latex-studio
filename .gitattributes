@@ -1,0 +1,20 @@
+# Line endings that matter.
+#
+# This repo is developed on Windows and executed in WSL/Linux containers. With
+# the default core.autocrlf=true a Windows checkout writes CRLF, and a shell
+# script that starts with `set -euo pipefail` then dies with
+# "set: pipefail: invalid option name" — hit on 2026-11-03 when a script was
+# rewritten through a Windows text-mode writer.
+#
+# These types run as-is on Linux, so pin them to LF regardless of platform.
+*.sh    text eol=lf
+*.bash  text eol=lf
+*.mjs   text eol=lf
+*.js    text eol=lf
+*.yml   text eol=lf
+*.yaml  text eol=lf
+*.pug   text eol=lf
+Dockerfile*      text eol=lf
+*.dockerignore   text eol=lf
+.gitignore       text eol=lf
+.gitattributes   text eol=lf
